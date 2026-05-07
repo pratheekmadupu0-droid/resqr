@@ -179,10 +179,10 @@ export default function EmergencyPage() {
 
                 <div className="space-y-10 animate-in fade-in slide-in-from-bottom-8 duration-700">
                     {/* 1. Name of the user */}
-                    <div className="bg-[#11192A] rounded-[48px] border border-white/5 p-16 text-center shadow-2xl relative overflow-hidden">
+                    <div className="bg-[#11192A] rounded-[48px] border border-white/5 p-10 sm:p-16 text-center shadow-2xl relative overflow-hidden">
                         <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-transparent via-red-600/20 to-transparent" />
                         <span className="text-[12px] font-black text-slate-500 uppercase tracking-[0.5em] block mb-6 italic">Identity Node</span>
-                        <h1 className="text-6xl sm:text-8xl font-black uppercase text-white tracking-tighter italic font-poppins break-words leading-none w-full">
+                        <h1 className="text-4xl sm:text-6xl md:text-7xl font-black uppercase text-white tracking-tighter italic font-poppins break-words leading-none w-full">
                             {user?.name || "USER NAME"}
                         </h1>
                     </div>
