@@ -19,14 +19,17 @@ export default function SuccessPage() {
         const slug = localStorage.getItem('resqr_active_slug');
         const fetchProfile = async () => {
             try {
-                // 1. First try global node
-                let snap = await get(ref(db, `profiles/${slug}`));
-                if (!snap.exists()) {
-                    // 2. Try user-specific node if global fails
-                    const uid = slug.includes('_') ? slug.split('_')[0] : null;
-                    if (uid) {
-                        snap = await get(ref(db, `users/${uid}/profiles/${slug}`));
-                    }
+                let snap = null;
+                const uid = slug.includes('_') ? slug.split('_')[0] : null;
+                
+                // 1. First try user-specific node
+                if (uid) {
+                    snap = await get(ref(db, `users/${uid}/profiles/${slug}`));
+                }
+
+                // 2. Try global node if user node fails
+                if (!snap || !snap.exists()) {
+                    snap = await get(ref(db, `profiles/${slug}`));
                 }
 
                 if (snap.exists()) {

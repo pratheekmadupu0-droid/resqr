@@ -29,11 +29,15 @@ export default function EmergencyPage() {
         const fetchProfile = async () => {
             if (!id) return setLoading(false);
             try {
-                let snap = await get(ref(db, `profiles/${id}`));
+                let snap = null;
                 
-                if (!snap.exists() && id.includes('_')) {
+                if (id.includes('_')) {
                     const uid = id.split('_')[0];
                     snap = await get(ref(db, `users/${uid}/profiles/${id}`));
+                }
+
+                if (!snap || !snap.exists()) {
+                    snap = await get(ref(db, `profiles/${id}`));
                 }
 
                 if (snap.exists()) {

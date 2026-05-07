@@ -50,11 +50,16 @@ export default function QRScanPage() {
              try {
                 if (id) {
                     const cleanId = id.trim();
-                    // 1. Try public registry first
-                    let snap = await get(ref(db, `profiles/${cleanId}`));
-                    
-                    if (!snap.exists()) {
-                        // 2. Try username registry
+                    let snap = null;
+
+                    // 1. Try direct user profile path first if ID matches Dashboard structure
+                    if (cleanId.includes('_')) {
+                        const uid = cleanId.split('_')[0];
+                        snap = await get(ref(db, `users/${uid}/profiles/${cleanId}`));
+                    }
+
+                    // 2. Try username registry
+                    if (!snap || !snap.exists()) {
                         const regSnap = await get(ref(db, `usernames/${cleanId.toLowerCase()}`));
                         if (regSnap.exists()) {
                             const path = regSnap.val();
@@ -62,11 +67,10 @@ export default function QRScanPage() {
                             snap = await get(ref(db, fullPath));
                         }
                     }
-                    
-                    if (!snap.exists() && cleanId.includes('_')) {
-                        // 3. Try direct user profile path (Matches Dashboard structure)
-                        const uid = cleanId.split('_')[0];
-                        snap = await get(ref(db, `users/${uid}/profiles/${cleanId}`));
+
+                    // 3. Try public registry as fallback
+                    if (!snap || !snap.exists()) {
+                        snap = await get(ref(db, `profiles/${cleanId}`));
                     }
 
                     if (snap.exists()) {
