@@ -31,13 +31,32 @@ export default function EmergencyPage() {
             try {
                 let snap = null;
                 
+                let actualUid = null;
+                let actualPid = id;
+                let resolvedPath = null;
+
                 if (id.includes('_')) {
-                    const uid = id.split('_')[0];
-                    snap = await get(ref(db, `users/${uid}/profiles/${id}`));
+                    actualUid = id.split('_')[0];
+                    resolvedPath = `users/${actualUid}/profiles/${id}`;
+                    snap = await get(ref(db, resolvedPath));
                 }
 
                 if (!snap || !snap.exists()) {
-                    snap = await get(ref(db, `profiles/${id}`));
+                    const regSnap = await get(ref(db, `usernames/${id.toLowerCase()}`));
+                    if (regSnap.exists()) {
+                        const path = regSnap.val();
+                        resolvedPath = path.startsWith('users/') ? path : `users/${path}`;
+                        snap = await get(ref(db, resolvedPath));
+                        
+                        const parts = path.split('/');
+                        actualUid = parts[0] === 'users' ? parts[1] : parts[0];
+                        actualPid = parts[parts.length - 1];
+                    }
+                }
+
+                if (!snap || !snap.exists()) {
+                    resolvedPath = `profiles/${id}`;
+                    snap = await get(ref(db, resolvedPath));
                 }
 
                 if (snap.exists()) {
@@ -57,7 +76,7 @@ export default function EmergencyPage() {
                         }
                     };
                     setUser(userData);
-                    recordScan(userData);
+                    recordScan(userData, actualUid, actualPid, resolvedPath);
                 }
             } catch (error) {
                 console.error("Profile Load Error:", error);
@@ -68,7 +87,7 @@ export default function EmergencyPage() {
         fetchProfile();
     }, [id]);
 
-    const recordScan = async (profileData) => {
+    const recordScan = async (profileData, actualUid, actualPid, resolvedPath) => {
         if (scanRecorded) return;
         setIsTransmitting(true);
         try {
@@ -91,10 +110,12 @@ export default function EmergencyPage() {
                 coords: (lat && lng) ? { lat, lng } : null
             };
 
-            await push(ref(db, `profiles/${id}/scans`), scanData);
-            if (id.includes('_')) {
-                const uid = id.split('_')[0];
-                await push(ref(db, `users/${uid}/profiles/${id}/scans`), scanData);
+            // Global scan record for Admin panel
+            await push(ref(db, `profiles/${actualPid}/scans`), scanData);
+            
+            // Push to the exact user profile node so the Dashboard updates
+            if (actualUid && actualPid) {
+                await push(ref(db, `users/${actualUid}/profiles/${actualPid}/scans`), scanData);
             }
             setScanRecorded(true);
         } catch (e) {
@@ -203,7 +224,9 @@ export default function EmergencyPage() {
                                     <Phone size={32} fill="white" />
                                     <span className="font-black uppercase italic tracking-widest text-3xl">Connect Call</span>
                                 </div>
-                                <span className="text-base opacity-70 font-black tracking-widest">{user.emergencyContact.phone}</span>
+                                <span className="text-base opacity-70 font-black tracking-widest">
+                                    {user.emergencyContact.phone ? user.emergencyContact.phone.replace(/\d(?=\d{4})/g, '*') : ''}
+                                </span>
                             </button>
 
                             {/* 3. Send location to family */}

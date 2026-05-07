@@ -52,10 +52,13 @@ export default function QRScanPage() {
                     const cleanId = id.trim();
                     let snap = null;
 
+                    let actualUid = null;
+                    let actualPid = cleanId;
+
                     // 1. Try direct user profile path first if ID matches Dashboard structure
                     if (cleanId.includes('_')) {
-                        const uid = cleanId.split('_')[0];
-                        snap = await get(ref(db, `users/${uid}/profiles/${cleanId}`));
+                        actualUid = cleanId.split('_')[0];
+                        snap = await get(ref(db, `users/${actualUid}/profiles/${cleanId}`));
                     }
 
                     // 2. Try username registry
@@ -65,6 +68,10 @@ export default function QRScanPage() {
                             const path = regSnap.val();
                             const fullPath = path.startsWith('users/') ? path : `users/${path}`;
                             snap = await get(ref(db, fullPath));
+                            
+                            const parts = path.split('/');
+                            actualUid = parts[0] === 'users' ? parts[1] : parts[0];
+                            actualPid = parts[parts.length - 1];
                         }
                     }
 
@@ -77,14 +84,17 @@ export default function QRScanPage() {
                         const raw = snap.val();
                         // Flatten data to ensure name is easily accessible as in Dashboard
                         const mergedData = { ...raw, ...(raw.data || {}) }; 
+                        
+                        actualUid = actualUid || raw.uid || (actualPid.includes('_') ? actualPid.split('_')[0] : null);
+                        
                         setProfile({ 
                             category: raw.category || 'people', 
                             data: mergedData, 
-                            id: cleanId, 
-                            uid: raw.uid || (cleanId.includes('_') ? cleanId.split('_')[0] : null)
+                            id: actualPid, 
+                            uid: actualUid
                         });
                         
-                        if (mergedData.uid) recordScan(mergedData.uid, cleanId, mergedData);
+                        if (actualUid) recordScan(actualUid, actualPid, mergedData);
                     }
                 }
              } catch (err) {
@@ -243,7 +253,9 @@ export default function QRScanPage() {
                                         <span className="font-black uppercase italic tracking-widest text-3xl">Connect Call</span>
                                     </div>
                                     <span className="text-base opacity-70 font-black tracking-widest">
-                                        {data?.emergencyContactPhone || data?.parentPhone || data?.ownerContact || data?.contactNumber}
+                                        {(data?.emergencyContactPhone || data?.parentPhone || data?.ownerContact || data?.contactNumber) ? 
+                                            (data?.emergencyContactPhone || data?.parentPhone || data?.ownerContact || data?.contactNumber).replace(/\d(?=\d{4})/g, '*') 
+                                            : ''}
                                     </span>
                                 </button>
 
