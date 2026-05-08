@@ -186,7 +186,7 @@ export default function LandingPage() {
                                         <div className="w-48 h-48 border-2 border-primary/30 rounded-2xl animate-pulse" />
                                     </div>
                                     <img
-                                        src={`${import.meta.env.BASE_URL}logo.png`}
+                                        src={`${import.meta.env.BASE_URL}resqr_logo.png`}
                                         alt="Logo"
                                         className="absolute w-16 h-16 object-contain opacity-10 invert"
                                     />

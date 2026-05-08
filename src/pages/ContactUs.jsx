@@ -117,7 +117,7 @@ export default function ContactUs() {
             </div>
 
             <footer className="mt-32 text-center opacity-20">
-                <img src={`${import.meta.env.BASE_URL}logo.png`} alt="RESQR" className="h-10 mx-auto mb-6 invert brightness-200" />
+                <img src={`${import.meta.env.BASE_URL}resqr_logo.png`} alt="RESQR" className="h-10 mx-auto mb-6 invert brightness-200" />
                 <p className="text-[10px] font-black uppercase tracking-[0.4em] text-white">Secure Communication Channel • PGP Encrypted</p>
             </footer>
         </div>

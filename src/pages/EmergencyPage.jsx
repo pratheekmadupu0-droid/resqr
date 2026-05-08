@@ -171,7 +171,7 @@ export default function EmergencyPage() {
 
             <div className="max-w-xl mx-auto space-y-8 pb-40 px-5 pt-12">
                 <div className="flex flex-col items-center mb-12 text-center animate-in fade-in duration-700">
-                     <img src="/logo.png" alt="RESQR" className="h-10 w-auto mb-8" />
+                     <img src="/resqr_logo.png" alt="RESQR" className="h-10 w-auto mb-8" />
                      <Badge className="bg-red-600 text-white border-none px-8 py-3 tracking-[0.4em] uppercase italic font-black text-[11px] shadow-2xl shadow-red-600/30">
                         Verified Rescue Identity
                      </Badge>
@@ -294,7 +294,7 @@ export default function EmergencyPage() {
             </div>
 
             <footer className="text-center py-24 bg-[#040812] border-t border-white/5 opacity-50">
-                <img src="/logo.png" alt="RESQR" className="h-8 w-auto mx-auto mb-8 grayscale" />
+                <img src="/resqr_logo.png" alt="RESQR" className="h-8 w-auto mx-auto mb-8 grayscale" />
                 <p className="text-[10px] font-black uppercase tracking-[0.6em] text-slate-600 italic">
                     GLOBAL EMERGENCY IDENTITY INFRASTRUCTURE
                 </p>

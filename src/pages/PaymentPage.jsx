@@ -136,7 +136,7 @@ export default function PaymentPage() {
             currency: "INR",
             name: "RESQR",
             description: `Payment for ${selectedProduct.title}`,
-            image: `${window.location.origin}/logo.png`,
+            image: `${window.location.origin}/resqr_logo.png`,
             handler: async function (response) {
                 const t = toast.loading("Verifying tactical payment...");
                 try {
@@ -311,7 +311,7 @@ export default function PaymentPage() {
                                         />
                                     </div>
                                     <div className="mt-3 flex items-center justify-center gap-2">
-                                        <img src="https://upload.wikimedia.org/wikipedia/commons/e/e1/UPI-Logo.png" alt="UPI" className="h-4 object-contain" />
+                                        <img src="https://upload.wikimedia.org/wikipedia/commons/e/e1/UPI-logo.png" alt="UPI" className="h-4 object-contain" />
                                     </div>
                                 </div>
                                 <div className="flex-1 space-y-6">

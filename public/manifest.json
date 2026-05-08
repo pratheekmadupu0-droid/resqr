@@ -7,12 +7,12 @@
   "theme_color": "#e63946",
   "icons": [
     {
-      "src": "/logo-3.png",
+      "src": "/resqr_logo.png",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "/logo-3.png",
+      "src": "/resqr_logo.png",
       "sizes": "512x512",
       "type": "image/png"
     }
