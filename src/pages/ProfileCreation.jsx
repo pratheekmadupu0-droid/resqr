@@ -381,7 +381,8 @@ export default function ProfileCreation() {
                                     </Button>
                                 </div>
                             </motion.div>
-                        </AnimatePresence>
+                        )}
+                    </AnimatePresence>
                     </Card>
                 </div>
             </div>
