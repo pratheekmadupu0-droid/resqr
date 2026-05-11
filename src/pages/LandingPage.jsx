@@ -486,15 +486,21 @@ export default function LandingPage() {
                             <p className="text-slate-500 text-sm leading-relaxed mb-8 font-medium">Instantly notify emergency contacts when your QR is scanned. They receive your live location and a map link.</p>
                             <Badge className="bg-primary/20 text-primary border-none text-[10px] uppercase font-black px-4 py-1 italic">LIVE & ACTIVE</Badge>
                         </div>
-                        <div className="bg-medical-card p-12 rounded-[40px] border border-white/5 backdrop-blur-sm group hover:border-blue-500/20 transition-all lg:col-span-2">
-                            <QrCode size={48} className="text-blue-400 mb-8 group-hover:scale-110 transition-transform" />
-                            <h3 className="text-2xl font-black italic uppercase tracking-tighter mb-4 font-poppins text-white">Advanced QR Identity</h3>
-                            <p className="text-slate-500 text-sm leading-relaxed mb-8 font-medium">Get a unique, high-resolution QR identity card that you can print on any personal gear or keep on your smartphone for instant access.</p>
-                            {!hasPaid && (
-                                <Link to="/create-profile">
-                                    <Badge className="bg-blue-400/20 text-blue-400 border-none text-[10px] uppercase font-black px-4 py-1 italic hover:bg-blue-400/30 transition-all cursor-pointer">SECURE NOW</Badge>
-                                </Link>
-                            )}
+                        <div className="bg-medical-card p-12 rounded-[40px] border border-white/5 backdrop-blur-sm group hover:border-blue-500/20 transition-all lg:col-span-2 relative overflow-hidden">
+                            <div className="absolute top-0 right-0 p-8 opacity-[0.03] group-hover:opacity-[0.08] transition-opacity">
+                                <Shield size={200} />
+                            </div>
+                            <div className="flex items-center gap-6 mb-8">
+                                <QrCode size={48} className="text-blue-400 group-hover:scale-110 transition-transform" />
+                                <div className="h-10 w-[2px] bg-white/10" />
+                                <Shield size={48} className="text-emerald-400 group-hover:scale-110 transition-transform" />
+                            </div>
+                            <h3 className="text-2xl font-black italic uppercase tracking-tighter mb-4 font-poppins text-white">Advanced AI & QR Identity</h3>
+                            <p className="text-slate-500 text-sm leading-relaxed mb-8 font-medium">Choose between standard high-definition QR tags or our new AI-powered Facial Recognition node. Your face becomes your digital safety key.</p>
+                            <div className="flex gap-4">
+                                <Badge className="bg-blue-400/20 text-blue-400 border-none text-[10px] uppercase font-black px-4 py-1 italic">HD QR NODES</Badge>
+                                <Badge className="bg-emerald-500/20 text-emerald-500 border-none text-[10px] uppercase font-black px-4 py-1 italic">AI FACIAL NODES</Badge>
+                            </div>
                         </div>
                         <div className="bg-medical-card p-12 rounded-[40px] border border-white/5 backdrop-blur-sm group hover:border-emerald-500/20 transition-all">
                             <Smartphone size={48} className="text-emerald-400 mb-8 group-hover:scale-110 transition-transform" />

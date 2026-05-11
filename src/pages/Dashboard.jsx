@@ -182,7 +182,7 @@ export default function Dashboard() {
                     <div className="lg:col-span-2 bg-[#11192A] rounded-[50px] border border-white/5 overflow-hidden flex flex-col relative shadow-2xl">
                         <div className="p-12 pb-0 flex justify-between items-start">
                              <div className="flex items-center gap-4"><div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center border border-primary/20"><Shield size={24} className="text-primary" /></div><div><h3 className="text-3xl font-black uppercase tracking-tighter font-poppins text-white italic">Emergency Passport</h3><p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1 italic">ACTIVE MEDICAL IDENTITY</p></div></div>
-                             <div className="flex items-center gap-2 px-4 py-1.5 bg-emerald-500/10 rounded-full border border-emerald-500/20"><div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" /><span className="text-[9px] font-black text-emerald-500 uppercase tracking-widest">SECURED</span></div>
+                              <div className="flex items-center gap-2 px-4 py-1.5 bg-emerald-500/10 rounded-full border border-emerald-500/20"><div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" /><span className="text-[9px] font-black text-emerald-500 uppercase tracking-widest">{activeProfile?.scannerType === 'facial' ? 'AI FACIAL ACTIVE' : 'SECURED'}</span></div>
                         </div>
 
                         <div className="p-12">
@@ -228,6 +228,17 @@ export default function Dashboard() {
                                 </div>
                             )}
                         </div>
+                        {activeProfile?.scannerType === 'facial' && activeProfile?.facialImage && (
+                            <div className="px-12 pb-12">
+                                <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-4 italic">Facial Recognition Node</p>
+                                <div className="relative w-32 h-32 rounded-3xl overflow-hidden border-2 border-emerald-500/30 group/facial">
+                                    <img src={activeProfile.facialImage} alt="Facial Profile" className="w-full h-full object-cover" />
+                                    <div className="absolute inset-0 bg-emerald-500/20 opacity-0 group-hover/facial:opacity-100 transition-opacity flex items-center justify-center">
+                                        <Shield size={24} className="text-white" />
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                         {!isEditing && <button onClick={() => setIsEditing(true)} className="w-full h-24 bg-[#050B18] text-white font-black italic uppercase tracking-[0.3em] text-sm flex items-center justify-center gap-4 hover:bg-slate-900 transition-all group font-poppins">Update Medical Records <ChevronRight size={24} className="text-primary group-hover:translate-x-2 transition-transform" /></button>}
                     </div>
 

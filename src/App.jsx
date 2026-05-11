@@ -14,6 +14,8 @@ import ContactUs from './pages/ContactUs';
 import LegalPage from './pages/LegalPage';
 import AboutUs from './pages/AboutUs';
 import ViralQR from './pages/ViralQR';
+import ScannerPage from './pages/ScannerPage';
+import StorePage from './pages/StorePage';
 import { useEffect } from 'react';
 
 function ScrollToTop() {
@@ -26,7 +28,7 @@ function ScrollToTop() {
 
 function App() {
     const location = useLocation();
-    const isScanPage = location.pathname.startsWith('/e/') || location.pathname.startsWith('/qr/') || location.pathname.startsWith('/u/') || (location.pathname.length > 1 && !['dashboard', 'create-profile', 'payment', 'success', 'admin', 'login', 'contact', 'legal', 'about', 'free-qr', 'viral-id'].includes(location.pathname.split('/')[1]));
+    const isScanPage = location.pathname.startsWith('/e/') || location.pathname.startsWith('/qr/') || location.pathname.startsWith('/u/') || (location.pathname.length > 1 && !['dashboard', 'create-profile', 'payment', 'success', 'admin', 'login', 'contact', 'legal', 'about', 'free-qr', 'viral-id', 'scanner', 'store'].includes(location.pathname.split('/')[1]));
 
     return (
         <div className="min-h-screen flex flex-col bg-slate-950 text-white">
@@ -50,6 +52,8 @@ function App() {
                     <Route path="/p/:username" element={<QRScanPage />} />
                     <Route path="/u/:username" element={<QRScanPage />} />
                     <Route path="/:username" element={<QRScanPage />} />
+                    <Route path="/scanner" element={<ScannerPage />} />
+                    <Route path="/store" element={<StorePage />} />
                     <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>
             </main>

@@ -9,6 +9,7 @@ import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { db, auth } from '../lib/firebase';
 import { ref, update, push, serverTimestamp } from 'firebase/database';
+import { extractFeatures } from '../lib/cvHelper';
 
 export default function ProfileCreation() {
     const [step, setStep] = useState(1);
@@ -23,7 +24,10 @@ export default function ProfileCreation() {
         // Valuables
         itemName: '', message: '',
         // Vehicles
-        ownerName: '', vehicleNumber: '', contactNumber: '', emergencyContact: ''
+        ownerName: '', vehicleNumber: '', contactNumber: '', emergencyContact: '',
+        // Scanner Type
+        scannerType: 'qr', // 'qr' or 'facial'
+        facialImage: null
     });
 
     const categories = [
@@ -47,6 +51,12 @@ export default function ProfileCreation() {
             if (category === 'vehicles' && !formData.vehicleNumber) return toast.error('Vehicle Number is required');
             setStep(3);
         } else if (step === 3) {
+            // Validation for facial image if selected
+            if (formData.scannerType === 'facial' && !formData.facialImage) {
+                return toast.error('Facial scan image is required for Facial Scanner');
+            }
+            setStep(4);
+        } else if (step === 4) {
             try {
                 const user = auth.currentUser;
                 if (!user) {
@@ -58,9 +68,26 @@ export default function ProfileCreation() {
 
                 const profileId = `${user.uid}_${Date.now()}`;
                 
+                let descriptors = null;
+                if (formData.scannerType === 'facial' && formData.facialImage) {
+                    const t = toast.loading("Analyzing Facial Node...");
+                    try {
+                        const features = await extractFeatures(formData.facialImage);
+                        descriptors = features.descriptors;
+                        toast.success("Facial Node Mapped", { id: t });
+                    } catch (e) {
+                        toast.error("Facial mapping failed. Try a clearer photo.", { id: t });
+                        return;
+                    }
+                }
+
                 const profileData = {
                     category,
                     data: formData,
+                    scannerType: formData.scannerType,
+                    facialImage: formData.facialImage || null,
+                    descriptors: descriptors,
+                    price: formData.scannerType === 'facial' ? 149 : 99,
                     createdAt: serverTimestamp(),
                     payment_status: 'pending',
                     uid: user.uid,
@@ -197,6 +224,49 @@ export default function ProfileCreation() {
 
                         {step === 2 && (
                             <motion.div key="step2" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }}>
+                                <div className="text-center mb-10">
+                                    <h2 className="text-3xl font-black text-white uppercase italic tracking-tighter font-poppins">Select Scanner Type</h2>
+                                    <p className="text-slate-500 font-bold text-sm italic mt-2">Choose how your identity will be scanned in an emergency.</p>
+                                </div>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                                    <button 
+                                        onClick={() => { setFormData(prev => ({ ...prev, scannerType: 'qr' })); setStep(3); }}
+                                        className={`bg-slate-950 border p-8 rounded-[30px] flex flex-col items-center justify-center text-center group transition-all hover:-translate-y-2 relative overflow-hidden ${formData.scannerType === 'qr' ? 'border-primary' : 'border-white/5'}`}
+                                    >
+                                        <div className="w-20 h-20 rounded-[24px] bg-primary/10 flex items-center justify-center text-primary mb-6 shadow-2xl">
+                                            <QrCode size={40} />
+                                        </div>
+                                        <h3 className="text-2xl font-black text-white uppercase tracking-tighter italic">QR Scanner</h3>
+                                        <p className="text-slate-500 text-sm font-bold mt-2">Standard high-definition QR code tag.</p>
+                                        <div className="mt-6 bg-primary text-white font-black px-5 py-2 rounded-full text-xs uppercase tracking-widest border border-primary">
+                                            ₹99
+                                        </div>
+                                    </button>
+
+                                    <button 
+                                        onClick={() => { setFormData(prev => ({ ...prev, scannerType: 'facial' })); setStep(3); }}
+                                        className={`bg-slate-950 border p-8 rounded-[30px] flex flex-col items-center justify-center text-center group transition-all hover:-translate-y-2 relative overflow-hidden ${formData.scannerType === 'facial' ? 'border-primary' : 'border-white/5'}`}
+                                    >
+                                        <div className="w-20 h-20 rounded-[24px] bg-emerald-500/10 flex items-center justify-center text-emerald-500 mb-6 shadow-2xl">
+                                            <Shield size={40} />
+                                        </div>
+                                        <h3 className="text-2xl font-black text-white uppercase tracking-tighter italic">Facial Scanner</h3>
+                                        <p className="text-slate-500 text-sm font-bold mt-2">AI-powered facial recognition technology.</p>
+                                        <div className="mt-6 bg-emerald-500 text-white font-black px-5 py-2 rounded-full text-xs uppercase tracking-widest border border-emerald-500">
+                                            ₹149
+                                        </div>
+                                    </button>
+                                </div>
+                                <div className="mt-10 flex justify-center">
+                                    <button onClick={handleBack} className="text-slate-500 font-black uppercase italic tracking-widest text-xs flex items-center gap-2 hover:text-white transition-colors">
+                                        <ChevronLeft size={16} /> BACK TO CATEGORIES
+                                    </button>
+                                </div>
+                            </motion.div>
+                        )}
+
+                        {step === 3 && (
+                            <motion.div key="step3" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }}>
                                 <div className="mb-10 flex items-center gap-4">
                                     <button onClick={handleBack} className="w-12 h-12 rounded-full bg-slate-950 flex items-center justify-center text-slate-500 hover:text-white transition-colors">
                                         <ChevronLeft size={24} />
@@ -212,6 +282,41 @@ export default function ProfileCreation() {
                                 {category === 'valuables' && renderValuablesForm()}
                                 {category === 'vehicles' && renderVehiclesForm()}
 
+                                {formData.scannerType === 'facial' && (
+                                    <div className="mt-8 p-8 bg-emerald-500/5 border border-emerald-500/10 rounded-[30px] space-y-6">
+                                        <h3 className="text-xl font-black uppercase tracking-widest text-emerald-500 italic">Facial Registration</h3>
+                                        <p className="text-slate-500 text-sm font-bold italic">Upload a clear photo of the person/pet to enable facial recognition scanning.</p>
+                                        <div className="flex flex-col items-center justify-center">
+                                            {formData.facialImage ? (
+                                                <div className="relative group">
+                                                    <img src={formData.facialImage} alt="Facial preview" className="w-48 h-48 object-cover rounded-3xl border-2 border-emerald-500 shadow-2xl" />
+                                                    <button onClick={() => setFormData(prev => ({ ...prev, facialImage: null }))} className="absolute -top-2 -right-2 bg-red-600 text-white p-2 rounded-full shadow-xl opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        <Plus className="rotate-45" size={16} />
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <label className="w-full h-48 border-2 border-dashed border-emerald-500/20 rounded-[30px] flex flex-col items-center justify-center cursor-pointer hover:bg-emerald-500/5 transition-all">
+                                                    <Plus className="text-emerald-500 mb-2" size={32} />
+                                                    <span className="text-xs font-black text-emerald-500 uppercase tracking-widest">Upload Facial Profile</span>
+                                                    <input 
+                                                        type="file" 
+                                                        className="hidden" 
+                                                        accept="image/*"
+                                                        onChange={(e) => {
+                                                            const file = e.target.files[0];
+                                                            if (file) {
+                                                                const reader = new FileReader();
+                                                                reader.onload = (ev) => setFormData(prev => ({ ...prev, facialImage: ev.target.result }));
+                                                                reader.readAsDataURL(file);
+                                                            }
+                                                        }}
+                                                    />
+                                                </label>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+
                                 <div className="mt-12">
                                     <Button onClick={handleNext} className="w-full text-xl font-black h-16 rounded-[24px] bg-primary text-white border-none uppercase italic tracking-tighter">
                                         REVIEW & PROCEED <ChevronRight size={24} className="ml-2" />
@@ -220,16 +325,26 @@ export default function ProfileCreation() {
                             </motion.div>
                         )}
 
-                        {step === 3 && (
-                            <motion.div key="step3" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }}>
+                        {step === 4 && (
+                            <motion.div key="step4" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }}>
                                 <div className="text-center mb-10">
                                     <Shield size={48} className="text-emerald-500 mx-auto mb-6 opacity-80" />
                                     <h2 className="text-3xl font-black text-white uppercase italic tracking-tighter font-poppins">Identity Preview</h2>
                                 </div>
 
-                                <div className="bg-slate-950 border border-white/5 rounded-[30px] p-8 text-center mb-10">
-                                    <h3 className="text-xl font-black text-white uppercase mb-2">Ready to Secure</h3>
-                                    <p className="text-slate-500 font-bold">Your {category} profile is ready to be locked into the Guardian Database.</p>
+                                <div className="bg-slate-950 border border-white/5 rounded-[30px] p-8 mb-10 space-y-6">
+                                    <div className="flex justify-between items-center border-b border-white/5 pb-4">
+                                        <span className="text-slate-500 font-bold uppercase text-[10px] tracking-widest italic">Scanner Type</span>
+                                        <span className="text-white font-black uppercase italic">{formData.scannerType} Scanner</span>
+                                    </div>
+                                    <div className="flex justify-between items-center border-b border-white/5 pb-4">
+                                        <span className="text-slate-500 font-bold uppercase text-[10px] tracking-widest italic">Category</span>
+                                        <span className="text-white font-black uppercase italic">{category}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-slate-500 font-bold uppercase text-[10px] tracking-widest italic">Registration Fee</span>
+                                        <span className="text-emerald-500 font-black uppercase italic text-2xl">₹{formData.scannerType === 'facial' ? 149 : 99}</span>
+                                    </div>
                                 </div>
 
                                 <div className="flex justify-between items-center gap-4">
@@ -241,7 +356,6 @@ export default function ProfileCreation() {
                                     </Button>
                                 </div>
                             </motion.div>
-                        )}
                     </AnimatePresence>
                 </Card>
             </div>

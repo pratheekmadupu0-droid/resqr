@@ -166,23 +166,31 @@ export default function SuccessPage() {
                 <Card className="max-w-sm mx-auto p-12 mb-16 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.5)] border-white/5 overflow-hidden relative group bg-medical-card rounded-[50px]">
                     <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-primary to-transparent" />
 
-                    <div ref={qrRef} className="bg-white p-6 rounded-[32px] border-8 border-slate-950 inline-block mb-10 transition-all group-hover:scale-105 group-hover:shadow-[0_0_40px_rgba(255,255,255,0.1)] text-center">
+                    <div className="bg-white p-6 rounded-[32px] border-8 border-slate-950 inline-block mb-10 transition-all group-hover:scale-105 group-hover:shadow-[0_0_40px_rgba(255,255,255,0.1)] text-center">
                         <p className="text-[12px] font-black text-primary uppercase tracking-[0.4em] mb-4 italic">resqr</p>
-                        <QRCodeCanvas
-                            id="success-qr-canvas"
-                            value={getQRValue()}
-                            size={220}
-                            level="H"
-                            includeMargin={false}
-                            imageSettings={{
-                                src: `${import.meta.env.BASE_URL}resqr_icon.png`,
-                                height: 45,
-                                width: 45,
-                                excavate: true,
-                            }}
-                        />
+                        {profile?.scannerType === 'facial' && profile?.facialImage ? (
+                            <div className="w-[220px] h-[220px] rounded-[24px] overflow-hidden border-4 border-emerald-500 shadow-xl mx-auto">
+                                <img src={profile.facialImage} alt="Facial Profile" className="w-full h-full object-cover" />
+                            </div>
+                        ) : (
+                            <QRCodeCanvas
+                                id="success-qr-canvas"
+                                value={getQRValue()}
+                                size={220}
+                                level="H"
+                                includeMargin={false}
+                                imageSettings={{
+                                    src: `${import.meta.env.BASE_URL}resqr_icon.png`,
+                                    height: 45,
+                                    width: 45,
+                                    excavate: true,
+                                }}
+                            />
+                        )}
                         <div className="mt-4">
-                            <p className="text-[12px] font-black text-slate-900 uppercase tracking-widest italic leading-tight">emergency qr</p>
+                            <p className="text-[12px] font-black text-slate-900 uppercase tracking-widest italic leading-tight">
+                                {profile?.scannerType === 'facial' ? 'facial node' : 'emergency qr'}
+                            </p>
                             <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest truncate max-w-[200px]">{getUserName()}</p>
                         </div>
                     </div>
