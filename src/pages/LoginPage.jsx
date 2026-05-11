@@ -140,12 +140,16 @@ export default function LoginPage() {
 
         try {
             const result = await signInWithPopup(auth, provider);
-            await syncUserToDb(result.user);
             toast.success('Signed in with Google!');
             
-            // Check for profiles
-            const profilesRef = ref(db, `users/${result.user.uid}/profiles`);
+            // Sync to DB (non-blocking for UI)
+            syncUserToDb(result.user).catch(err => console.error("Sync error:", err));
+            
+            // Check for profiles and redirect
+            const uid = result.user.uid;
+            const profilesRef = ref(db, `users/${uid}/profiles`);
             const profilesSnapshot = await get(profilesRef);
+            
             if (!profilesSnapshot.exists()) {
                 navigate('/create-profile');
             } else {
@@ -159,7 +163,11 @@ export default function LoginPage() {
             }
         } catch (error) {
             console.error("Google auth error:", error);
-            toast.error(`Google Sign-in failed: ${error.code || error.message}`);
+            if (error.code === 'auth/popup-closed-by-user') {
+                toast.error('Sign-in cancelled');
+            } else {
+                toast.error(`Google Sign-in failed: ${error.message}`);
+            }
         }
     };
 
