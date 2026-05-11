@@ -43,14 +43,13 @@ export default function ProfileCreation() {
     };
 
     const handleNext = async () => {
-        if (step === 2) {
-            // Validation
+        if (step === 3) {
+            // Validation for form data
             if (category === 'people' && !formData.name) return toast.error('Name is required');
             if (category === 'pets' && !formData.petName) return toast.error('Pet Name is required');
             if (category === 'valuables' && !formData.itemName) return toast.error('Item Name is required');
             if (category === 'vehicles' && !formData.vehicleNumber) return toast.error('Vehicle Number is required');
-            setStep(3);
-        } else if (step === 3) {
+
             // Validation for facial image if selected
             if (formData.scannerType === 'facial' && !formData.facialImage) {
                 return toast.error('Facial scan image is required for Facial Scanner');

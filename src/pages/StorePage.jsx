@@ -51,6 +51,46 @@ const products = [
 export default function StorePage() {
     const [cartCount, setCartCount] = useState(0);
 
+    const handleBuyNow = (product) => {
+        const options = {
+            key: import.meta.env.VITE_RAZORPAY_KEY_ID || "rzp_test_YourKeyHere",
+            amount: product.price * 100, // Amount in paise
+            currency: "INR",
+            name: "RESQR Safety Gear",
+            description: `Purchase: ${product.name}`,
+            image: "/resqr_logo.png",
+            handler: async (response) => {
+                try {
+                    const verifyRes = await fetch('/api/verify', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(response)
+                    });
+                    const verifyData = await verifyRes.json();
+                    if (verifyData.status === 'ok') {
+                        alert(`Success! Your order for ${product.name} has been placed.`);
+                    } else {
+                        alert("Payment verification failed. Please contact support.");
+                    }
+                } catch (err) {
+                    console.error("Verification error:", err);
+                    alert("Payment completed but verification pending. Please check your email.");
+                }
+            },
+            prefill: {
+                name: "",
+                email: "",
+                contact: ""
+            },
+            theme: {
+                color: "#ff3b3b"
+            }
+        };
+
+        const rzp = new window.Razorpay(options);
+        rzp.open();
+    };
+
     const handleAddToCart = () => {
         setCartCount(prev => prev + 1);
         // Toast logic would go here
@@ -116,7 +156,7 @@ export default function StorePage() {
                                 </div>
 
                                 <Button
-                                    onClick={handleAddToCart}
+                                    onClick={() => handleBuyNow(product)}
                                     className="w-full py-8 rounded-2xl font-black text-xl italic shadow-2xl shadow-primary/20 flex items-center justify-center gap-4 bg-primary text-white border-none transition-transform active:scale-95 uppercase tracking-tighter"
                                 >
                                     <ShoppingCart size={24} /> BUY NOW <ArrowRight size={24} />
