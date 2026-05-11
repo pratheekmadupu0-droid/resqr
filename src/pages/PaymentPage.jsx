@@ -28,7 +28,6 @@ export default function PaymentPage() {
                 toast.error("Please login to proceed to payment.");
                 navigate('/login?redirect_to=/payment');
             } else {
-                // If we have a pending profile from ProfileCreation while logged out, sync it now!
                 const pendingProfileJson = localStorage.getItem('resqr_pending_profile');
                 if (pendingProfileJson) {
                     try {
@@ -36,7 +35,6 @@ export default function PaymentPage() {
                         const nameSlug = localStorage.getItem('resqr_active_slug') ||
                             formData.name.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-');
 
-                        const profileRef = ref(db, 'profiles/' + nameSlug);
                         const profileData = {
                             ...formData,
                             email: user.email,
@@ -45,13 +43,9 @@ export default function PaymentPage() {
                             last_updated: new Date().toISOString()
                         };
 
-                        // 1. Sync to global node
                         await update(ref(db, `profiles/${nameSlug}`), profileData);
-
-                        // 2. Sync to user-specific node
                         await update(ref(db, `users/${user.uid}/profiles/${nameSlug}`), profileData);
 
-                        console.log("Successfully synced pending profile for", user.email);
                         localStorage.removeItem('resqr_pending_profile');
                         localStorage.setItem('resqr_active_slug', nameSlug);
                     } catch (err) {
@@ -70,52 +64,18 @@ export default function PaymentPage() {
             } else {
                 list = DEFAULT_PRODUCTS;
             }
-            console.log("Products loaded:", list);
             setProducts(list.length > 0 ? list : DEFAULT_PRODUCTS);
             const finalProducts = list.length > 0 ? list : DEFAULT_PRODUCTS;
             const best = finalProducts.find(p => p.best) || finalProducts[0];
             setSelectedProduct(best);
             setLoading(false);
-        }, (error) => {
-            console.error("Firebase load error:", error);
-            setProducts(DEFAULT_PRODUCTS);
-            setSelectedProduct(DEFAULT_PRODUCTS[0]);
-            setLoading(false);
         });
-
-        // Robust fallback if Firebase hangs
-        const timer = setTimeout(() => {
-            setLoading(currentLoading => {
-                if (currentLoading) {
-                    console.warn("PaymentPage: Firebase load timed out, using fallback.");
-                    setProducts(DEFAULT_PRODUCTS);
-                    setSelectedProduct(DEFAULT_PRODUCTS.find(p => p.best) || DEFAULT_PRODUCTS[0]);
-                    return false;
-                }
-                return currentLoading;
-            });
-        }, 3000);
 
         return () => {
             unsubscribeAuth();
             unsub();
-            clearTimeout(timer);
         };
     }, [navigate]);
-
-    const loadRazorpayScript = () => {
-        return new Promise((resolve) => {
-            if (window.Razorpay) {
-                resolve(true);
-                return;
-            }
-            const script = document.createElement('script');
-            script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-            script.onload = () => resolve(true);
-            script.onerror = () => resolve(false);
-            document.body.appendChild(script);
-        });
-    };
 
     const handlePayment = async () => {
         if (!selectedProduct) {
@@ -123,148 +83,40 @@ export default function PaymentPage() {
             return;
         }
 
-        const res = await loadRazorpayScript();
+        const isDemo = true; // DEMO MODE ACTIVE
 
-        if (!res) {
-            toast.error("Razorpay SDK failed to load. Are you online?");
-            return;
-        }
-
-        const options = {
-            key: import.meta.env.VITE_RAZORPAY_KEY_ID || "rzp_live_SZuIUGAbW3gPLV", // Use env or fallback
-            amount: selectedProduct.price * 100, // Amount in paise
-            currency: "INR",
-            name: "RESQR",
-            description: `Payment for ${selectedProduct.title}`,
-            image: `${window.location.origin}/resqr_logo.png`,
-            handler: async function (response) {
-                const t = toast.loading("Verifying tactical payment...");
+        if (isDemo) {
+            const t = toast.loading("Processing tactical demo payment...");
+            setTimeout(async () => {
                 try {
                     const currentUser = auth.currentUser;
                     let activeSlug = localStorage.getItem('resqr_active_slug');
 
-                    // 1. Instant Profile Update to unlock features immediately
                     if (activeSlug || currentUser) {
-                        try {
-                            if (!activeSlug && currentUser) {
-                                const profilesRef = ref(db, 'profiles');
-                                const snapshot = await get(profilesRef);
-                                if (snapshot.exists()) {
-                                    const entry = Object.entries(snapshot.val()).find(([_, data]) => data.uid === currentUser.uid);
-                                    if (entry) {
-                                        activeSlug = entry[0];
-                                        localStorage.setItem('resqr_active_slug', activeSlug);
-                                    }
-                                }
+                        const finalPaymentData = {
+                            payment_status: 'paid',
+                            payment_id: "demo_" + Math.random().toString(36).substr(2, 9),
+                            payment_date: new Date().toISOString(),
+                            last_updated: new Date().toISOString()
+                        };
+
+                        if (activeSlug) {
+                            await update(ref(db, `profiles/${activeSlug}`), finalPaymentData);
+                            const uid = activeSlug.includes('_') ? activeSlug.split('_')[0] : (currentUser?.uid);
+                            if (uid) {
+                                await update(ref(db, `users/${uid}/profiles/${activeSlug}`), finalPaymentData);
                             }
-
-                            if (activeSlug) {
-                                const finalPaymentData = {
-                                    payment_status: 'paid',
-                                    payment_id: response.razorpay_payment_id,
-                                    order_id: response.razorpay_order_id || "direct_pay",
-                                    payment_date: new Date().toISOString(),
-                                    last_updated: new Date().toISOString()
-                                };
-
-                                // 1. Update Global Profile Node
-                                try {
-                                    await update(ref(db, `profiles/${activeSlug}`), finalPaymentData);
-                                } catch (e) { console.warn("Global update failed:", e); }
-
-                                // 2. Update User-Specific Profile Node
-                                // First try with the slug directly (modern format usually is the UID)
-                                try {
-                                    const uid = activeSlug.includes('_') ? activeSlug.split('_')[0] : (currentUser?.uid);
-                                    if (uid) {
-                                        await update(ref(db, `users/${uid}/profiles/${activeSlug}`), finalPaymentData);
-                                    }
-                                } catch (e) {
-                                    console.warn("User-specific update failed:", e);
-                                    // Fallback: search for profile in user node if uid extraction failed
-                                    if (currentUser) {
-                                         await update(ref(db, `users/${currentUser.uid}/profiles/${activeSlug}`), finalPaymentData);
-                                    }
-                                }
-                            }
-                        } catch (updateErr) {
-                            console.error("Local update error:", updateErr);
                         }
                     }
 
-                    // 2. Verification attempt (Non-blocking or less critical for UI flow)
-                    try {
-                        const verifyRes = await fetch('/api/verify', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                razorpay_order_id: response.razorpay_order_id || "",
-                                razorpay_payment_id: response.razorpay_payment_id || "",
-                                razorpay_signature: response.razorpay_signature || ""
-                            })
-                        });
-
-                        // Log verification results but dont block success page if payment_id exists
-                        if (!verifyRes.ok) {
-                            console.warn("Backend verification failed", await verifyRes.text());
-                            // We still proceed because we have a valid payment_id from the Razorpay callback
-                        }
-                    } catch (verifyErr) {
-                        console.error("Verification error:", verifyErr);
-                    }
-
-                    toast.success('Payment Received! Identity Unlocked.', { id: t });
+                    toast.success('Demo Payment Success! Identity Activated.', { id: t });
                     navigate('/success');
                 } catch (error) {
-                    console.error("Payment flow error:", error);
-                    toast.error("Critical error during activation. Please contact support.", { id: t });
+                    console.error("Demo payment error:", error);
+                    toast.error("Demo sequence failed.", { id: t });
                 }
-            },
-            prefill: {
-                name: "",
-                email: "",
-                contact: "",
-                method: "upi" // Default to UPI as requested
-            },
-            notes: {
-                payment_type: "live_transaction",
-                product_id: selectedProduct.id
-            },
-            config: {
-                display: {
-                    blocks: {
-                        banks: {
-                            name: "All Payment Methods",
-                            instruments: [
-                                { method: "upi" },
-                                { method: "card" },
-                                { method: "netbanking" },
-                                { method: "wallet" }
-                            ]
-                        }
-                    },
-                    sequence: ["block.banks"],
-                    preferences: { show_default_blocks: true }
-                }
-            },
-            theme: {
-                color: "#e11d48" // matches primary red
-            }
-        };
-        try {
-            console.log("Initializing Razorpay with key:", options.key);
-            if (!options.key) {
-                throw new Error("Razorpay Key ID is missing. Check your environment variables.");
-            }
-            const rzp = new window.Razorpay(options);
-            rzp.on('payment.failed', function (response) {
-                console.error("Razorpay Payment Failed:", response.error);
-                toast.error('Payment failed: ' + response.error.description);
-            });
-            rzp.open();
-        } catch (error) {
-            console.error("Razorpay Initialization Error:", error);
-            toast.error(`Initialization Error: ${error.message || "Please check console"}`);
+            }, 1500);
+            return;
         }
     };
 
@@ -282,175 +134,55 @@ export default function PaymentPage() {
     const gst = selectedProduct.price - subtotal;
 
     return (
-        <div className="min-h-screen bg-medical-bg py-24 px-4 text-white font-manrope selection:bg-primary/30">
+        <div className="min-h-screen bg-medical-bg py-24 px-4 text-white font-manrope">
             <div className="max-w-6xl mx-auto">
-                <header className="mb-16 text-center space-y-4">
-                    <Badge className="bg-primary/20 text-primary border-none mb-4 px-6 py-1 font-black italic tracking-widest">SECURE CHECKOUT</Badge>
+                <header className="mb-16 text-center">
+                    <Badge className="bg-primary/20 text-primary border-none mb-4 px-6 py-1 font-black italic tracking-widest">DEMO MODE ACTIVE</Badge>
                     <h1 className="text-5xl md:text-7xl font-black text-white italic uppercase tracking-tighter leading-none font-poppins">
-                        Fuel Your <span className="text-primary italic-display">Safety</span> Network.
+                        Checkout <span className="text-primary">Preview.</span>
                     </h1>
-                    <p className="text-slate-500 font-bold uppercase tracking-[0.2em] text-[10px] italic max-w-xl mx-auto">One-time activation fee for lifetime medical data accessibility and smart emergency broadcasting.</p>
                 </header>
 
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
-                    <div className="lg:col-span-8 space-y-8">
-                        {/* MANUAL UPI SECTION - NEW */}
-                        <Card className="p-10 bg-primary/5 border-primary/20 rounded-[40px] shadow-2xl relative overflow-hidden ring-4 ring-primary/5">
-                            <div className="absolute top-0 right-0 p-4 bg-primary text-white text-[10px] font-black uppercase tracking-widest italic rounded-bl-3xl">Special Offer</div>
-                            <div className="flex flex-col md:flex-row items-center gap-10">
-                                <div className="bg-white p-4 rounded-3xl shadow-xl">
-                                    <div className="text-center mb-2">
-                                        <p className="text-[10px] font-black text-primary uppercase italic">Scan to Pay ₹99</p>
-                                    </div>
-                                    <div className="w-48 h-48 bg-slate-100 flex items-center justify-center rounded-xl overflow-hidden">
-                                        {/* Dynamic UPI QR for ₹99 */}
-                                        <img 
-                                            src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent('upi://pay?pa=resqr.official@okicici&pn=RESQR&am=99&cu=INR')}`}
-                                            alt="UPI QR Code"
-                                            className="w-full h-full p-2"
-                                        />
-                                    </div>
-                                    <div className="mt-3 flex items-center justify-center gap-2">
-                                        <img src="https://upload.wikimedia.org/wikipedia/commons/e/e1/UPI-logo.png" alt="UPI" className="h-4 object-contain" />
-                                    </div>
-                                </div>
-                                <div className="flex-1 space-y-6">
-                                    <div className="inline-block px-4 py-1.5 bg-primary/20 rounded-full text-primary font-black uppercase italic text-[10px] tracking-widest">Manual Activation</div>
-                                    <h2 className="text-3xl font-black italic uppercase tracking-tighter text-white leading-tight">Pay ₹99 directly via any UPI App</h2>
-                                    <p className="text-slate-400 text-sm font-medium leading-relaxed">
-                                        1. Scan the QR or pay to <span className="text-white font-bold">resqr.official@okicici</span><br />
-                                        2. Pay exactly <span className="text-white font-bold italic underline">₹99</span><br />
-                                        3. Your profile activates automatically within 1 hour after verification.
-                                    </p>
-                                    <div className="pt-2">
-                                        <Button 
-                                            variant="outline" 
-                                            className="h-14 px-8 rounded-2xl border-white/10 text-white font-black italic uppercase tracking-widest text-[11px] hover:bg-white/10"
-                                            onClick={() => {
-                                                navigator.clipboard.writeText('resqr.official@okicici');
-                                                toast.success('UPI ID Copied!');
-                                            }}
-                                        >
-                                            Copy UPI ID
-                                        </Button>
-                                    </div>
-                                </div>
-                            </div>
-                        </Card>
-
-                        <div className="p-4 text-center">
-                            <p className="text-[10px] font-black text-slate-600 uppercase tracking-[0.4em] italic">OR USE INSTANT GATEWAY</p>
-                        </div>
-
-                        <Card className="p-10 bg-medical-card border-white/5 rounded-[40px] shadow-2xl relative overflow-hidden">
-                            <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
-                            <h3 className="text-[10px] font-black text-slate-500 uppercase italic tracking-[0.4em] mb-10">01. Select Your Gear Variant</h3>
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
+                    <div className="lg:col-span-8">
+                        <Card className="p-10 bg-medical-card border-white/5 rounded-[40px] shadow-2xl">
+                            <h2 className="text-2xl font-black italic uppercase mb-8">Selected Plan</h2>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                                 {products.map((p) => (
                                     <button
                                         key={p.id}
                                         onClick={() => setSelectedProduct(p)}
-                                        className={`p-6 rounded-3xl border-2 transition-all text-left flex flex-col justify-between h-40 group relative overflow-hidden ${selectedProduct.id === p.id
-                                            ? 'border-primary bg-primary/10 shadow-[0_0_30px_rgba(230,57,70,0.2)]'
-                                            : 'border-white/5 bg-slate-950/50 text-slate-500 hover:border-white/10 hover:bg-slate-950'
-                                            }`}
+                                        className={`p-6 rounded-3xl border-2 transition-all ${selectedProduct.id === p.id ? 'border-primary bg-primary/5' : 'border-white/5'}`}
                                     >
-                                        {p.best && (
-                                            <div className="absolute -top-1 -right-1 bg-primary text-white text-[8px] font-black uppercase tracking-widest px-3 py-1 rounded-bl-xl italic">Popular</div>
-                                        )}
-                                        <p className="text-[10px] font-black uppercase tracking-widest group-hover:text-white transition-colors">{p.title}</p>
-                                        <div className="mt-auto">
-                                            <p className={`text-2xl font-black italic ${selectedProduct.id === p.id ? 'text-white' : 'text-slate-600 group-hover:text-primary transition-colors'}`}>₹{p.price}</p>
-                                        </div>
+                                        <p className="text-[10px] font-black uppercase mb-2">{p.title}</p>
+                                        <p className="text-xl font-black italic">₹{p.price}</p>
                                     </button>
                                 ))}
                             </div>
-                        </Card>
 
-                        <Card className="p-0 overflow-hidden border border-white/5 bg-medical-card shadow-[0_32px_64px_-16px_rgba(0,0,0,0.5)] rounded-[40px] relative">
-                            <div className="bg-slate-950/80 border-b border-white/5 p-8 flex items-center justify-between backdrop-blur-xl">
-                                <div className="flex items-center gap-4 text-white">
-                                    <div className="bg-primary/20 p-3 rounded-2xl text-primary border border-primary/20 shadow-lg shadow-primary/20">
-                                        <Zap size={22} />
-                                    </div>
-                                    <div>
-                                        <h2 className="font-black italic uppercase tracking-tighter text-2xl leading-none">Strategic Payment</h2>
-                                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest italic mt-1">Encrypted Transaction Hub</p>
-                                    </div>
-                                </div>
-                                <div className="flex items-center gap-2 px-4 py-2 bg-green-500/10 border border-green-500/20 rounded-full">
-                                    <ShieldCheck className="text-green-500" size={16} />
-                                    <span className="text-[10px] font-black text-green-500 uppercase tracking-widest">Verified</span>
-                                </div>
-                            </div>
-
-                            <div className="p-10 space-y-10">
-                                <div className="p-8 rounded-[30px] border-2 border-primary bg-primary/5 cursor-pointer relative group overflow-hidden transition-all hover:bg-primary/10">
-                                    <div className="absolute top-0 right-0 p-3 bg-primary text-white text-[8px] font-black uppercase tracking-[0.3em] italic rounded-bl-2xl">Recommended Gateway</div>
-                                    <div className="flex items-center gap-6">
-                                        <div className="w-8 h-8 rounded-full border-4 border-primary bg-slate-950 shadow-lg shadow-primary/30 flex items-center justify-center p-1">
-                                            <div className="w-full h-full bg-primary rounded-full" />
-                                        </div>
-                                        <div className="flex-1">
-                                            <h3 className="text-xl font-black text-white italic uppercase tracking-tight">Razorpay Instant Dispatch</h3>
-                                            <p className="text-[10px] text-slate-500 uppercase font-black italic tracking-widest mt-1">UPI • Cards • Netbanking • Wallets</p>
-                                        </div>
-                                        <img src="https://razorpay.com/favicon.png" alt="Razorpay" className="w-8 h-8 grayscale invert brightness-200" />
-                                    </div>
-                                </div>
-
-                                <Button className="w-full py-10 text-3xl font-black italic rounded-[30px] shadow-2xl shadow-primary/30 bg-primary text-white border-none group hover:scale-[1.02] active:scale-95 transition-all uppercase tracking-tighter" onClick={handlePayment}>
-                                    INITIATE TRANSFER ₹{selectedProduct.price} <ChevronRight size={32} className="ml-2 group-hover:translate-x-1 transition-transform" />
+                            <div className="mt-12">
+                                <Button className="w-full py-10 text-2xl font-black italic rounded-[30px] bg-primary text-white border-none uppercase tracking-tighter shadow-2xl shadow-primary/20" onClick={handlePayment}>
+                                    PROCESS DEMO PAYMENT <ChevronRight size={24} className="ml-2" />
                                 </Button>
-
-                                <div className="flex items-center justify-center gap-8 pt-4 opacity-30">
-                                    <div className="flex items-center gap-3 text-[9px] font-black text-white uppercase tracking-[0.4em]">
-                                        <Lock size={12} /> SSL Secured
-                                    </div>
-                                    <div className="flex items-center gap-3 text-[9px] font-black text-white uppercase tracking-[0.4em]">
-                                        <ShieldCheck size={12} /> PCI DSS Compliant
-                                    </div>
-                                </div>
                             </div>
                         </Card>
                     </div>
 
-                    <div className="lg:col-span-4 lg:sticky lg:top-24">
-                        <Card className="bg-medical-card border-white/5 rounded-[40px] shadow-2xl p-10 relative overflow-hidden">
-                            <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-slate-800 to-transparent" />
-                            <h3 className="text-[10px] font-black mb-10 text-slate-500 uppercase tracking-[0.4em] italic text-center">Payload Summary</h3>
-                            <div className="space-y-8">
-                                <div className="flex justify-between items-start pb-8 border-b border-white/5">
-                                    <div className="space-y-2">
-                                        <span className="font-black text-white uppercase italic text-2xl tracking-tighter leading-none">{selectedProduct.title}</span>
-                                        <div className="flex items-center gap-2">
-                                            <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-                                            <span className="text-[9px] font-black text-primary uppercase tracking-widest italic">LIFETIME ACCESS GRANTED</span>
-                                        </div>
-                                    </div>
-                                    <span className="font-black text-3xl italic text-white font-poppins">₹{selectedProduct.price}</span>
+                    <div className="lg:col-span-4">
+                        <Card className="p-10 bg-medical-card border-white/5 rounded-[40px] shadow-2xl">
+                            <h3 className="text-sm font-black uppercase tracking-widest text-slate-500 mb-8">Order Summary</h3>
+                            <div className="space-y-4">
+                                <div className="flex justify-between font-black italic text-xl">
+                                    <span>{selectedProduct.title}</span>
+                                    <span>₹{selectedProduct.price}</span>
                                 </div>
-
-                                <div className="space-y-4">
-                                    <div className="flex justify-between items-center text-[10px] font-black text-slate-500 uppercase tracking-widest italic">
-                                        <span>Subtotal (Net)</span>
-                                        <span className="text-slate-300">₹{subtotal.toFixed(2)}</span>
-                                    </div>
-                                    <div className="flex justify-between items-center text-[10px] font-black text-slate-500 uppercase tracking-widest italic">
-                                        <span>Taxation (18% GST)</span>
-                                        <span className="text-slate-300">₹{gst.toFixed(2)}</span>
-                                    </div>
+                                <div className="flex justify-between text-xs text-slate-500 uppercase tracking-widest">
+                                    <span>Tax (Demo)</span>
+                                    <span>₹0.00</span>
                                 </div>
-
-                                <div className="pt-8 border-t border-white/5">
-                                    <div className="flex justify-between items-center">
-                                        <span className="text-[10px] font-black text-white uppercase tracking-[0.3em] italic">Total Payable</span>
-                                        <span className="text-4xl font-black italic text-primary font-poppins tracking-tighter shadow-primary/20 drop-shadow-lg">₹{selectedProduct.price}</span>
-                                    </div>
-                                </div>
-
-                                <div className="mt-8 p-6 bg-slate-950 rounded-2xl border border-white/5 text-[10px] font-bold text-slate-500 italic leading-relaxed text-center">
-                                    Digital activation occurs instantly upon successful transaction confirmation. Physical tracking logs will be updated within 12 hours.
+                                <div className="pt-4 border-t border-white/5 flex justify-between font-black text-3xl text-primary">
+                                    <span>Total</span>
+                                    <span>₹{selectedProduct.price}</span>
                                 </div>
                             </div>
                         </Card>

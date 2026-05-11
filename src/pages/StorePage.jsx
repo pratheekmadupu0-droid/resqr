@@ -52,6 +52,16 @@ export default function StorePage() {
     const [cartCount, setCartCount] = useState(0);
 
     const handleBuyNow = (product) => {
+        const isDemo = true; // SET TO FALSE FOR REAL PAYMENTS
+
+        if (isDemo) {
+            const t = toast.loading(`Initiating demo purchase for ${product.name}...`);
+            setTimeout(() => {
+                toast.success(`Success! Demo order for ${product.name} confirmed.`, { id: t });
+            }, 1500);
+            return;
+        }
+
         const options = {
             key: import.meta.env.VITE_RAZORPAY_KEY_ID || "rzp_test_YourKeyHere",
             amount: product.price * 100, // Amount in paise
