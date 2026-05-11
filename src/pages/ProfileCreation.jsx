@@ -329,36 +329,61 @@ export default function ProfileCreation() {
                             <motion.div key="step4" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }}>
                                 <div className="text-center mb-10">
                                     <Shield size={48} className="text-emerald-500 mx-auto mb-6 opacity-80" />
-                                    <h2 className="text-3xl font-black text-white uppercase italic tracking-tighter font-poppins">Identity Preview</h2>
+                                    <h2 className="text-3xl font-black text-white uppercase italic tracking-tighter font-poppins">
+                                        Identity Preview
+                                    </h2>
                                 </div>
 
                                 <div className="bg-slate-950 border border-white/5 rounded-[30px] p-8 mb-10 space-y-6">
                                     <div className="flex justify-between items-center border-b border-white/5 pb-4">
-                                        <span className="text-slate-500 font-bold uppercase text-[10px] tracking-widest italic">Scanner Type</span>
-                                        <span className="text-white font-black uppercase italic">{formData.scannerType} Scanner</span>
+                                        <span className="text-slate-500 font-bold uppercase text-[10px] tracking-widest italic">
+                                            Scanner Type
+                                        </span>
+                                        <span className="text-white font-black uppercase italic">
+                                            {formData.scannerType} Scanner
+                                        </span>
                                     </div>
+
                                     <div className="flex justify-between items-center border-b border-white/5 pb-4">
-                                        <span className="text-slate-500 font-bold uppercase text-[10px] tracking-widest italic">Category</span>
-                                        <span className="text-white font-black uppercase italic">{category}</span>
+                                        <span className="text-slate-500 font-bold uppercase text-[10px] tracking-widest italic">
+                                            Category
+                                        </span>
+                                        <span className="text-white font-black uppercase italic">
+                                            {category}
+                                        </span>
                                     </div>
+
                                     <div className="flex justify-between items-center">
-                                        <span className="text-slate-500 font-bold uppercase text-[10px] tracking-widest italic">Registration Fee</span>
-                                        <span className="text-emerald-500 font-black uppercase italic text-2xl">₹{formData.scannerType === 'facial' ? 149 : 99}</span>
+                                        <span className="text-slate-500 font-bold uppercase text-[10px] tracking-widest italic">
+                                            Registration Fee
+                                        </span>
+                                        <span className="text-emerald-500 font-black uppercase italic text-2xl">
+                                            ₹{formData.scannerType === "facial" ? 149 : 99}
+                                        </span>
                                     </div>
                                 </div>
 
                                 <div className="flex justify-between items-center gap-4">
-                                    <Button onClick={handleBack} variant="outline" className="flex-1 text-slate-400 border-white/10 h-16 rounded-[24px] font-black italic uppercase">
+                                    <Button
+                                        onClick={handleBack}
+                                        variant="outline"
+                                        className="flex-1 text-slate-400 border-white/10 h-16 rounded-[24px] font-black italic uppercase"
+                                    >
                                         Back
                                     </Button>
-                                    <Button onClick={handleNext} className="flex-[2] h-16 rounded-[24px] bg-emerald-500 text-white border-none uppercase italic text-xl font-black tracking-tighter shadow-xl shadow-emerald-500/20">
-                                        <CheckCircle2 size={24} className="mr-2" /> CREATE PROFILE
+
+                                    <Button
+                                        onClick={handleNext}
+                                        className="flex-[2] h-16 rounded-[24px] bg-emerald-500 text-white border-none uppercase italic text-xl font-black tracking-tighter shadow-xl shadow-emerald-500/20"
+                                    >
+                                        <CheckCircle2 size={24} className="mr-2" />
+                                        CREATE PROFILE
                                     </Button>
                                 </div>
                             </motion.div>
-                    </AnimatePresence>
-                </Card>
+                        </AnimatePresence>
+                    </Card>
+                </div>
             </div>
-        </div>
-    );
-}
+        );
+    }
