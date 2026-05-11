@@ -56,7 +56,7 @@ export default function PaymentPage() {
         });
 
         const prodRef = ref(db, 'config/products');
-        const unsub = onValue(prodRef, (snapshot) => {
+        const unsub = onValue(prodRef, async (snapshot) => {
             const data = snapshot.val();
             let list = [];
             if (data) {
@@ -64,10 +64,39 @@ export default function PaymentPage() {
             } else {
                 list = DEFAULT_PRODUCTS;
             }
+            
             setProducts(list.length > 0 ? list : DEFAULT_PRODUCTS);
-            const finalProducts = list.length > 0 ? list : DEFAULT_PRODUCTS;
-            const best = finalProducts.find(p => p.best) || finalProducts[0];
-            setSelectedProduct(best);
+            
+            // NEW: Fetch pending profile to determine price
+            const activeSlug = localStorage.getItem('resqr_active_slug');
+            const currentUser = auth.currentUser;
+            
+            if (activeSlug && currentUser) {
+                try {
+                    const profileRef = ref(db, `users/${currentUser.uid}/profiles/${activeSlug}`);
+                    const profileSnap = await get(profileRef);
+                    if (profileSnap.exists()) {
+                        const pData = profileSnap.val();
+                        const dynamicProduct = {
+                            id: 'dynamic',
+                            title: pData.scannerType === 'facial' ? 'Facial Identity' : 'QR Identity',
+                            price: pData.price || (pData.scannerType === 'facial' ? 149 : 99),
+                            best: true
+                        };
+                        setSelectedProduct(dynamicProduct);
+                    } else {
+                        const best = list.find(p => p.best) || list[0];
+                        setSelectedProduct(best);
+                    }
+                } catch (err) {
+                    console.error("Error fetching dynamic price:", err);
+                    setSelectedProduct(list.find(p => p.best) || list[0]);
+                }
+            } else {
+                const best = list.find(p => p.best) || list[0];
+                setSelectedProduct(best);
+            }
+            
             setLoading(false);
         });
 
